@@ -10,6 +10,8 @@ use Symfony\Component\Serializer\SerializerInterface;
 
 use App\Repository\CategoryRepository;
 
+use App\DTO\Category\CategoryDTO;
+
 final class CategoryController extends AbstractController
 {
     #[Route('/api/categories', name: 'get_categories', methods: ['GET'])]
@@ -18,7 +20,15 @@ final class CategoryController extends AbstractController
         SerializerInterface $serializerInterface
     ): JsonResponse {
         $categoryList = $categoryRepository->findAll();
-        $jsonCategoryList = $serializerInterface->serialize($categoryList, 'json');
+
+        $categoryDtos = array_map(function ($category) {
+            return new CategoryDTO(
+                $category->getId(),
+                $category->getName()
+            );
+        }, $categoryList);
+
+        $jsonCategoryList = $serializerInterface->serialize($categoryDtos, 'json');
 
         return new JsonResponse(
             $jsonCategoryList,
@@ -36,7 +46,12 @@ final class CategoryController extends AbstractController
     ): JsonResponse {
         $category = $categoryRepository->find($id);
         if ($category) {
-            $jsonCategory = $serializerInterface->serialize($category, 'json');
+            $categoryDto = new CategoryDTO(
+                $category->getId(),
+                $category->getName()
+            );
+
+            $jsonCategory = $serializerInterface->serialize($categoryDto, 'json');
 
             return new JsonResponse(
                 $jsonCategory,

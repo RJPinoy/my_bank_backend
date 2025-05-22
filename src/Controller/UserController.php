@@ -10,39 +10,55 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Serializer\SerializerInterface;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
-use Symfony\Component\Validator\Constraints as Assert;
 
 use App\Entity\User;
 
 use App\Repository\UserRepository;
+use App\Repository\TransactionsRepository;
+
+use App\DTO\User\UserDTO;
+use App\DTO\User\UserInputDTO;
+use App\DTO\Category\CategoryDTO;
+use App\DTO\Transactions\TransactionDTO;
 
 final class UserController extends AbstractController
 {
-    #[Route('/api/users', name: 'get_users', methods: ['GET'])]
-    public function getUsers(
-        UserRepository $userRepository, 
+    // #[Route('/api/users', name: 'get_users', methods: ['GET'])]
+    // public function getUsers(
+    //     UserRepository $userRepository, 
+    //     SerializerInterface $serializerInterface
+    // ): JsonResponse {
+    //     $userList = $userRepository->findAll();
+
+    //     $userDtos = array_map(function ($user) {
+    //         return new UserDTO(
+    //             $user->getId(),
+    //             $user->getUsername()
+    //         );
+    //     }, $userList);
+
+    //     $jsonUserList = $serializerInterface->serialize($userDtos, 'json');
+
+    //     return new JsonResponse(
+    //         $jsonUserList,
+    //         Response::HTTP_OK,
+    //         [],
+    //         true
+    //     );
+    // }
+
+    #[Route('/api/user', name: 'get_user', methods: ['GET'])]
+    public function getUserById(
         SerializerInterface $serializerInterface
     ): JsonResponse {
-        $userList = $userRepository->findAll();
-        $jsonUserList = $serializerInterface->serialize($userList, 'json');
-
-        return new JsonResponse(
-            $jsonUserList,
-            Response::HTTP_OK,
-            [],
-            true
-        );
-    }
-
-    #[Route('/api/user/{id}', name: 'get_userById', methods: ['GET'])]
-    public function getCategoryById(
-        int $id, 
-        UserRepository $userRepository, 
-        SerializerInterface $serializerInterface
-    ): JsonResponse {
-        $user = $userRepository->find($id);
+        $user = $this->getUser();
         if ($user) {
-            $jsonUser = $serializerInterface->serialize($user, 'json');
+            $userDto = new UserDTO(
+                $user->getId(),
+                $user->getUsername()
+            );
+
+            $jsonUser = $serializerInterface->serialize($userDto, 'json');
 
             return new JsonResponse(
                 $jsonUser,
@@ -51,35 +67,52 @@ final class UserController extends AbstractController
                 true
             );
         } else {
-            return new JsonResponse(
-                ['error' => 'User not found'],
-                Response::HTTP_NOT_FOUND
-            );
+            return new JsonResponse(['error' => 'Unauthorized'], Response::HTTP_UNAUTHORIZED);
         }
     }
+    
+    #[Route('/api/user/transactions', name: 'get_user_transactions', methods: ['GET'])]
+    public function getUserTransactions(
+        TransactionsRepository $transactionsRepository,
+        SerializerInterface $serializerInterface
+    ): JsonResponse {
+        $user = $this->getUser();
 
-    #[Route('/api/user', name: 'create_user', methods: ['POST'])]
+        if (!$user) {
+            return new JsonResponse(['error' => 'Unauthorized'], Response::HTTP_UNAUTHORIZED);
+        }
+
+        $transactions = $transactionsRepository->findBy(['user' => $user]);
+
+        $transactionDtos = array_map(function ($transaction) {
+            return new TransactionDTO(
+                $transaction->getId(),
+                $transaction->getName(),
+                $transaction->getAmount(),
+                $transaction->getDate()->format(\DateTime::ATOM),
+                new CategoryDTO(
+                    $transaction->getCategory()->getId(),
+                    $transaction->getCategory()->getName()
+                ),
+            );
+        }, $transactions);
+
+        $json = $serializerInterface->serialize($transactionDtos, 'json');
+
+        return new JsonResponse($json, Response::HTTP_OK, [], true);
+    }
+
+    #[Route('/user', name: 'create_user', methods: ['POST'])]
     public function createUser(
         ValidatorInterface $validator,
         Request $request,
         UserRepository $userRepository,
-        UserPasswordHasherInterface $passwordHasher
+        UserPasswordHasherInterface $passwordHasher,
+        SerializerInterface $serializerInterface
     ): JsonResponse {
-        $data = json_decode($request->getContent(), true);
+        $userInputDto = $serializerInterface->deserialize($request->getContent(), UserInputDTO::class, 'json');
 
-        if (!isset($data['username'], $data['password'])) {
-            return new JsonResponse(['error' => 'Missing username or password'], Response::HTTP_BAD_REQUEST);
-        }
-
-        if ($userRepository->findOneBy(['username' => $data['username']])) {
-            return new JsonResponse(['error' => 'Username already exists'], Response::HTTP_CONFLICT);
-        }
-
-        $violations = $validator->validate($data['username'], [
-            new Assert\NotBlank(),
-            new Assert\Length(['min' => 3, 'max' => 255]),
-        ]);
-        
+        $violations = $validator->validate($userInputDto);
         if (count($violations) > 0) {
             $errors = [];
             foreach ($violations as $violation) {
@@ -89,14 +122,25 @@ final class UserController extends AbstractController
         }
 
         $user = new User();
-        $user->setUsername($data['username']);
-        $user->setRoles(['ROLE_USER']); // Optional
-
-        $hashedPassword = $passwordHasher->hashPassword($user, $data['password']);
+        $user->setUsername($userInputDto->username);
+        $hashedPassword = $passwordHasher->hashPassword($user, $userInputDto->password);
         $user->setPassword($hashedPassword);
+        $user->setRoles(['ROLE_USER']);
 
-        $userRepository->add($user); // Add this method in the repo below
+        $userRepository->add($user);
 
-        return new JsonResponse(['status' => 'User created'], Response::HTTP_CREATED);
+        $userDto = new UserDTO(
+            $user->getId(),
+            $user->getUsername()
+        );
+
+        $jsonUser = $serializerInterface->serialize($userDto, 'json');
+
+        return new JsonResponse(
+            $jsonUser,
+            Response::HTTP_CREATED,
+            [],
+            true
+        );
     }
 }
