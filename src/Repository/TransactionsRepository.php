@@ -22,6 +22,12 @@ class TransactionsRepository extends ServiceEntityRepository
         $this->getEntityManager()->flush();
     }
 
+    public function remove(Transactions $transactions): void
+    {
+        $this->getEntityManager()->remove($transactions);
+        $this->getEntityManager()->flush();
+    }
+
 //    /**
 //     * @return Transactions[] Returns an array of Transactions objects
 //     */

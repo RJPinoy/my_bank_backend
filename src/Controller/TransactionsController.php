@@ -22,6 +22,39 @@ use App\DTO\Transactions\TransactionInputDTO;
 
 final class TransactionsController extends AbstractController
 {
+    
+    
+    #[Route('/api/transactions', name: 'get_transactions', methods: ['GET'])]
+    public function getTransactions(
+        TransactionsRepository $transactionsRepository,
+        SerializerInterface $serializerInterface
+    ): JsonResponse {
+        $user = $this->getUser();
+
+        if (!$user) {
+            return new JsonResponse(['error' => 'Unauthorized'], Response::HTTP_UNAUTHORIZED);
+        }
+
+        $transactions = $transactionsRepository->findBy(['user' => $user]);
+
+        $transactionDtos = array_map(function ($transaction) {
+            return new TransactionDTO(
+                $transaction->getId(),
+                $transaction->getName(),
+                $transaction->getAmount(),
+                $transaction->getDate()->format(\DateTime::ATOM),
+                new CategoryDTO(
+                    $transaction->getCategory()->getId(),
+                    $transaction->getCategory()->getName()
+                ),
+            );
+        }, $transactions);
+
+        $json = $serializerInterface->serialize($transactionDtos, 'json');
+
+        return new JsonResponse($json, Response::HTTP_OK, [], true);
+    }
+
     #[Route('/api/transaction', name: 'create_transaction', methods: ['POST'])]
     public function createTransaction(
         Request $request,
@@ -73,5 +106,51 @@ final class TransactionsController extends AbstractController
 
         $json = $serializerInterface->serialize($responseDto, 'json');
         return new JsonResponse($json, Response::HTTP_CREATED, [], true);
+    }
+
+    #[Route('/api/transaction/{id}', name: 'delete_transaction', methods: ['DELETE'])]
+    public function deleteTransaction(
+        int $id,
+        TransactionsRepository $transactionsRepository,
+        SerializerInterface $serializerInterface
+    ): JsonResponse {
+        $user = $this->getUser();
+        if (!$user) {
+            return new JsonResponse(['error' => 'Unauthorized'], Response::HTTP_UNAUTHORIZED);
+        }
+
+        $transaction = $transactionsRepository->find($id);
+        // Check if the transaction exists and belongs to the user
+        if (!$transaction) {
+            return new JsonResponse(['error' => 'Transaction not found'], Response::HTTP_NOT_FOUND);
+        }
+        // Check if the transaction belongs to the authenticated user
+        if ($transaction->getUser()->getId() !== $user->getId()) {
+            return new JsonResponse(['error' => 'Forbidden'], Response::HTTP_FORBIDDEN);
+        }
+
+        $transactionsRepository->remove($transaction);
+
+        $transactions = $transactionsRepository->findBy(['user' => $user]);
+
+        $transactionDtos = array_map(function ($transaction) {
+            return new TransactionDTO(
+                $transaction->getId(),
+                $transaction->getName(),
+                $transaction->getAmount(),
+                $transaction->getDate()->format(\DateTime::ATOM),
+                new CategoryDTO(
+                    $transaction->getCategory()->getId(),
+                    $transaction->getCategory()->getName()
+                ),
+            );
+        }, $transactions);
+
+        $json = $serializerInterface->serialize($transactionDtos, 'json');
+
+        return new JsonResponse([
+            'success' => "Transaction $id deleted successfully.",
+            'transactions' => json_decode($json)
+        ], Response::HTTP_OK);
     }
 }
