@@ -14,12 +14,9 @@ use Symfony\Component\Validator\Validator\ValidatorInterface;
 use App\Entity\User;
 
 use App\Repository\UserRepository;
-use App\Repository\TransactionsRepository;
 
 use App\DTO\User\UserDTO;
 use App\DTO\User\UserInputDTO;
-use App\DTO\Category\CategoryDTO;
-use App\DTO\Transactions\TransactionDTO;
 
 final class UserController extends AbstractController
 {
@@ -69,37 +66,6 @@ final class UserController extends AbstractController
         } else {
             return new JsonResponse(['error' => 'Unauthorized'], Response::HTTP_UNAUTHORIZED);
         }
-    }
-    
-    #[Route('/api/user/transactions', name: 'get_user_transactions', methods: ['GET'])]
-    public function getUserTransactions(
-        TransactionsRepository $transactionsRepository,
-        SerializerInterface $serializerInterface
-    ): JsonResponse {
-        $user = $this->getUser();
-
-        if (!$user) {
-            return new JsonResponse(['error' => 'Unauthorized'], Response::HTTP_UNAUTHORIZED);
-        }
-
-        $transactions = $transactionsRepository->findBy(['user' => $user]);
-
-        $transactionDtos = array_map(function ($transaction) {
-            return new TransactionDTO(
-                $transaction->getId(),
-                $transaction->getName(),
-                $transaction->getAmount(),
-                $transaction->getDate()->format(\DateTime::ATOM),
-                new CategoryDTO(
-                    $transaction->getCategory()->getId(),
-                    $transaction->getCategory()->getName()
-                ),
-            );
-        }, $transactions);
-
-        $json = $serializerInterface->serialize($transactionDtos, 'json');
-
-        return new JsonResponse($json, Response::HTTP_OK, [], true);
     }
 
     #[Route('/user', name: 'create_user', methods: ['POST'])]
