@@ -1,7 +1,7 @@
 
 services:
 ###> doctrine/doctrine-bundle ###
-  database:
+  db:
     ports:
-      - "5432"
+      # - "3307:3306"
 ###< doctrine/doctrine-bundle ###

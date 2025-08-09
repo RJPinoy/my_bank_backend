@@ -25,6 +25,14 @@ final class Version20250121125937 extends AbstractMigration
         $this->addSql('ALTER TABLE transactions ADD CONSTRAINT FK_EAA81A4CA76ED395 FOREIGN KEY (user_id) REFERENCES user (id)');
         $this->addSql('CREATE INDEX IDX_EAA81A4C12469DE2 ON transactions (category_id)');
         $this->addSql('CREATE INDEX IDX_EAA81A4CA76ED395 ON transactions (user_id)');
+        $this->addSql("INSERT INTO category (name) VALUES ('Groceries') ON DUPLICATE KEY UPDATE name = name;");
+        $this->addSql("INSERT INTO category (name) VALUES ('Utilities') ON DUPLICATE KEY UPDATE name = name;");
+        $this->addSql("INSERT INTO category (name) VALUES ('Transport') ON DUPLICATE KEY UPDATE name = name;");
+        $this->addSql("INSERT INTO category (name) VALUES ('Shopping') ON DUPLICATE KEY UPDATE name = name;");
+        $this->addSql("INSERT INTO category (name) VALUES ('Income') ON DUPLICATE KEY UPDATE name = name;");
+        $this->addSql("INSERT INTO category (name) VALUES ('Housing') ON DUPLICATE KEY UPDATE name = name;");
+        $this->addSql("INSERT INTO category (name) VALUES ('Healthcare') ON DUPLICATE KEY UPDATE name = name;");
+        $this->addSql("INSERT INTO category (name) VALUES ('Other') ON DUPLICATE KEY UPDATE name = name;");
     }
 
     public function down(Schema $schema): void

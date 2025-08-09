@@ -19,6 +19,14 @@ services:
             - '../src/DependencyInjection/'
             - '../src/Entity/'
             - '../src/Kernel.php'
+            
+    App\Security\Login\LoginSuccessHandler:
+        autowire: true
+        autoconfigure: false
+
+    App\Security\Login\LoginFailureHandler:
+        autowire: true
+        autoconfigure: false
 
     # add more service definitions when explicit configuration is needed
     # please note that last definitions always *replace* previous ones
