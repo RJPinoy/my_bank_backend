@@ -21,8 +21,6 @@ use App\DTO\Transactions\TransactionInputDTO;
 
 final class TransactionsController extends AbstractController
 {
-    
-    
     #[Route('/api/transactions', name: 'get_transactions', methods: ['GET'])]
     public function getTransactions(
         TransactionsRepository $transactionsRepository,
