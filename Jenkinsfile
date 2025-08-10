@@ -8,6 +8,7 @@ pipeline {
             steps {
                 git branch: 'main', url: 'https://github.com/RJPinoy/my_bank_backend.git'
                 sh 'composer install'
+                sh 'php bin/phpunit'
             }
         }
         stage("Continuous Delivery / Livraison Continue") {
